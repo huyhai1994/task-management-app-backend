@@ -1,27 +1,35 @@
-const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs'); // Add this line to import bcrypt
+const User = require('../models/User');
 
-// User registration
+// Register new user
 exports.registerUser = async (req, res) => {
-    const {email, password, name} = req.body;
     try {
-        let user = await User.findOne({email});
+        const {username, password} = req.body;
+
+        // Check if user already exists
+        let user = await User.findOne({username});
         if (user) {
             return res.status(400).json({msg: 'User already exists'});
         }
-        user = new User({email, password, name});
+
+        // Create new user
+        user = new User({username, password});
+
+        // Hash password
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(password, salt);
+
         await user.save();
 
-        const payload = {user: {id: user.id}};
-        const token = jwt.sign(payload, process.env.JWT_SECRET, {expiresIn: '1h'});
-        res.json({token});
+        res.status(201).json({msg: 'User registered successfully'});
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server error');
     }
 };
 
-// User login
+
 exports.loginUser = async (req, res) => {
     const {email, password} = req.body;
     try {
